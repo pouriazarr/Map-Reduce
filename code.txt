@@ -1,0 +1,5 @@
+export CLASSPATH="$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-client-core-3.2.1.jar:$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-client-common-3.2.1.jar:$HADOOP_HOME/share/hadoop/common/hadoop-common-3.2.1.jar:/tmp/CountSales/*:$HADOOP_HOME/lib/*:$HADOOP_HOME/share/hadoop/common/lib/commons-cli-1.2.jar"
+
+javac -d . CountSalesMapper.java CountSalesReducer.java CountSalesDriver.java
+
+jar cfm CountSales.jar Manifest.txt CountSales/*.class
