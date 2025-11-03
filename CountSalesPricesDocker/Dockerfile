@@ -35,7 +35,7 @@ RUN jar cfm CountSalesPrice.jar Manifest.txt CountSales/*.class
 
 RUN hdfs dfs -mkdir -p /user/root/salesdata
 
-RUN hdfs dfs -mkdir -p /user/root/salesdata/countsalesprice008
+RUN hdfs dfs -mkdir -p /user/root/countsalesprice008
 
 RUN hdfs dfs -put /tmp/SalesJan2009.csv /user/root/salesdata/
 
