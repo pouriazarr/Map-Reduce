@@ -1,5 +1,4 @@
 version: "3"
-
 services:
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
@@ -12,8 +11,17 @@ services:
       - hadoop_namenode:/hadoop/dfs/name
     environment:
       - CLUSTER_NAME=test
+      # Fix: Set fs.defaultFS to use port 9000 (RPC) via Docker hostname
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
     env_file:
       - ./hadoop.env
+    # Fix: Add healthcheck to ensure NameNode is fully ready (beyond just port open)
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9870 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s  # Give extra time for HDFS init/format
 
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -22,10 +30,11 @@ services:
     volumes:
       - hadoop_datanode:/hadoop/dfs/data
     environment:
-      SERVICE_PRECONDITION: "namenode:9870"
+      # Fix: Wait for both Web UI (9870) AND RPC (9000)
+      SERVICE_PRECONDITION: "namenode:9870 namenode:9000"
     env_file:
       - ./hadoop.env
-  
+
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     container_name: resourcemanager
@@ -43,7 +52,7 @@ services:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
     env_file:
       - ./hadoop.env
-  
+
   historyserver:
     image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
     container_name: historyserver
@@ -55,26 +64,28 @@ services:
     env_file:
       - ./hadoop.env
 
-  #mysql:
-    #image: mysql:latest
-    #ports:
-      #- 3306:3306
-    #environment:
-      #- MYSQL_ROOT_PASSWORD=qwer
-      #- MYSQL_PASSWORD=qwer
-    #command: --default-authentication-plugin=mysql_native_password --disable-log-bin
-    #volumes:
-      #- ./data/mysql:/var/lib/mysql
-
+  # Fix: Add job service with depends_on + explicit precondition for NameNode readiness
   countsalesprice:
-    build: 
+    build:
       context: ./CountSalesPricesDocker
     container_name: countsalesprice
     environment:
       OUTPUT: '/user/root/countsalesprice008'
+      # Inherit fs.defaultFS from env_file (or add here if needed)
     env_file:
-      - ./hadoop.env 
+      - ./hadoop.env
+    # Fix: Wait for full NameNode + other services
+    depends_on:
+      namenode:
+        condition: service_healthy  # Waits for healthcheck
+      datanode:
+        condition: service_started
+    # Alternative/backup: Use SERVICE_PRECONDITION (comment out depends_on if using this)
+    # environment:
+    #   SERVICE_PRECONDITION: "namenode:9870 namenode:9000"
 
+# Commented MySQL remains as-is
+# mysql: ...
 
 volumes:
   hadoop_namenode:

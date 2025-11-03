@@ -1,10 +1,20 @@
 FROM bde2020/hadoop-base:2.0.0-hadoop3.2.1-java8
 
-RUN apt update
-RUN apt install -y wget
+
+RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g'      /etc/apt/sources.list && \
+    sed -i 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
+    sed -i '/stretch-updates/d'                                      /etc/apt/sources.list && \
+    echo 'Acquire::Check-Valid-Until "false";\nAcquire::Check-Date "false";' > /etc/apt/apt.conf.d/99ignore-expired
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget && \
+    rm -rf /var/lib/apt/lists/*
+
+
 WORKDIR /tmp
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-RUN bash Miniconda3-latest-Linux-x86_64.sh -b
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-py38_4.12.0-Linux-x86_64.sh && \
+    bash Miniconda3-py38_4.12.0-Linux-x86_64.sh -b -p /root/miniconda3 && \
+    rm Miniconda3-py38_4.12.0-Linux-x86_64.sh
 RUN mkdir -p /root/.conda
 ENV PATH="/root/miniconda3/bin:${PATH}"
 
@@ -24,6 +34,8 @@ RUN javac -d . CountSalesDriver.java CountSalesMapper.java CountSalesReducer.jav
 RUN jar cfm CountSalesPrice.jar Manifest.txt CountSales/*.class
 
 RUN hdfs dfs -mkdir -p /user/root/salesdata
+
+RUN hdfs dfs -mkdir -p /user/root/salesdata/countsalesprice008
 
 RUN hdfs dfs -put /tmp/SalesJan2009.csv /user/root/salesdata/
 
